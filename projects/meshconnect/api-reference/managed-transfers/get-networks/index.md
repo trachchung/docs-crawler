@@ -1,0 +1,244 @@
+<!-- Source: https://docs.meshconnect.com/api-reference/managed-transfers/get-networks -->
+
+[Skip to main content](https://docs.meshconnect.com/api-reference/managed-transfers/get-networks#content-area)
+[Mesh home page](https://docs.meshconnect.com/)
+Search...
+Ctrl KAsk AICTRLI
+
+
+[Mesh home page](https://docs.meshconnect.com/)
+Search or ask...
+Navigation
+Managed Transfers
+Get networks
+##### Managed Account Authentication
+  * [POST Get Link token with parameters](https://docs.meshconnect.com/api-reference/managed-account-authentication/get-link-token-with-parameters)
+  * [POST Refresh auth token](https://docs.meshconnect.com/api-reference/managed-account-authentication/refresh-auth-token)
+  * [DEL Remove connection](https://docs.meshconnect.com/api-reference/managed-account-authentication/remove-connection)
+  * [GET Get health status](https://docs.meshconnect.com/api-reference/managed-account-authentication/get-health-status)
+  * [GET Retrieve the list of all available integrations.](https://docs.meshconnect.com/api-reference/managed-account-authentication/retrieve-the-list-of-all-available-integrations)
+
+
+##### Managed Transfers
+  * [GET Get networks](https://docs.meshconnect.com/api-reference/managed-transfers/get-networks)
+  * [GET Get integrations](https://docs.meshconnect.com/api-reference/managed-transfers/get-integrations)
+  * [GET Get supported tokens list](https://docs.meshconnect.com/api-reference/managed-transfers/get-supported-tokens-list)
+  * [POST Get deposit address](https://docs.meshconnect.com/api-reference/managed-transfers/get-deposit-address)
+  * [POST Get deposit addresses](https://docs.meshconnect.com/api-reference/managed-transfers/get-list-of-deposit-addresses)
+  * [GET Get transfers initiated by Mesh](https://docs.meshconnect.com/api-reference/managed-transfers/get-transfers-initiated-by-mesh)
+
+
+##### Portfolio
+  * [POST Get holdings.](https://docs.meshconnect.com/api-reference/portfolio/get-holdings)
+  * [POST Get holdings values.](https://docs.meshconnect.com/api-reference/portfolio/get-holdings-values)
+  * [GET Get aggregated portfolio](https://docs.meshconnect.com/api-reference/portfolio/get-aggregated-portfolio)
+
+
+##### Balance
+  * [POST Get account balance](https://docs.meshconnect.com/api-reference/balance/get-account-balance)
+  * [GET Get aggregated portfolio fiat balances](https://docs.meshconnect.com/api-reference/balance/get-aggregated-portfolio-fiat-balances)
+
+
+##### Verify
+  * [POST Verify account identity.](https://docs.meshconnect.com/api-reference/verify/verify)
+  * [GET Get wallet verifications for user and address.](https://docs.meshconnect.com/api-reference/verify/wallet)
+
+
+##### Transfers to/from User's Linked Account
+  * [POST Get deposit address](https://docs.meshconnect.com/api-reference/transfers/get-deposit-address)
+
+
+GET
+https://integration-api.meshconnect.com https://sandbox-integration-api.meshconnect.com
+/
+api
+/
+v1
+/
+transfers
+/
+managed
+/
+networks
+Try it
+Get networks
+cURL
+
+```
+curl --request GET \
+  --url https://integration-api.meshconnect.com/api/v1/transfers/managed/networks \
+  --header 'X-Client-Id: <api-key>' \
+  --header 'X-Client-Secret: <api-key>'
+```
+
+200
+
+```
+
+  "content": {
+    "networks": [
+
+        "networkType": "evm",
+        "tokens": [
+
+            "symbol": "ETH",
+            "logoUrl": "https://file-cdn.meshconnect.com/public/logos/tokens/ETH.svg"
+          },
+
+            "symbol": "USDC",
+            "logoUrl": "https://file-cdn.meshconnect.com/public/logos/tokens/USDC.svg",
+            "contractAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+          },
+
+            "symbol": "USDT",
+            "logoUrl": "https://file-cdn.meshconnect.com/public/logos/tokens/USDT.svg",
+            "contractAddress": "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+
+        ],
+        "supportedBrokerTypes": [
+          "deFiWallet",
+          "robinhood",
+          "coinbase",
+          "kraken",
+          "binanceInternational",
+          "binanceUs"
+        ],
+        "addressPattern": "^0x[a-fA-F0-9]{40}$",
+        "supportedTokens": [
+          "ETH",
+          "USDC",
+          "USDT"
+        ],
+        "nativeSymbol": "ETH",
+        "id": "e3c7fdd8-b1fc-4e51-85ae-bb276e075611",
+        "name": "Ethereum",
+        "chainId": "1",
+        "logoUrl": "https://file-cdn.meshconnect.com/public/logos/networks/Ethereum.svg"
+
+
+  },
+  "status": "ok",
+  "message": "",
+  "errorHash": "3904604d",
+  "teamCode": "P4",
+  "errorType": ""
+
+```
+
+#### Authorizations
+X-Client-Secret
+string
+header
+required
+Contact Mesh to get client Secret
+X-Client-Id
+string
+header
+required
+Contact Mesh to get client Id
+#### Response
+200
+application/json
+OK
+status
+enum<string>
+Available options: 
+`ok`, 
+`serverFailure`, 
+`permissionDenied`, 
+`badRequest`, 
+`notFound`, 
+`conflict`, 
+`tooManyRequest`, 
+`locked`, 
+`unavailableForLegalReasons`
+message
+string | null
+A message generated by the API
+displayMessage
+string | null
+User-friendly display message that can be presented to the end user
+errorHash
+string | null
+An error grouping hash from string components and caller information. Used by bugsnag on FE for correct error grouping
+teamCode
+string | null
+Opaque team code for error routing. Resolved from exception origin or caller file path via CODEOWNERS. Format: 2-character code (e.g., "7K", "M2"). Use for alerting/routing, not display.
+errorType
+string | null
+Strictly-typed error type that is explaining the reason of an unsuccessful status of the operation. All possible error types are available in the documentation.
+errorData
+unknown
+content
+object
+Show child attributes
+Was this page helpful?
+YesNo
+[ Retrieve the list of all available integrations. Previous ](https://docs.meshconnect.com/api-reference/managed-account-authentication/retrieve-the-list-of-all-available-integrations)[ Get integrations Next ](https://docs.meshconnect.com/api-reference/managed-transfers/get-integrations)
+Ctrl+I
+Get networks
+cURL
+
+```
+curl --request GET \
+  --url https://integration-api.meshconnect.com/api/v1/transfers/managed/networks \
+  --header 'X-Client-Id: <api-key>' \
+  --header 'X-Client-Secret: <api-key>'
+```
+
+200
+
+```
+
+  "content": {
+    "networks": [
+
+        "networkType": "evm",
+        "tokens": [
+
+            "symbol": "ETH",
+            "logoUrl": "https://file-cdn.meshconnect.com/public/logos/tokens/ETH.svg"
+          },
+
+            "symbol": "USDC",
+            "logoUrl": "https://file-cdn.meshconnect.com/public/logos/tokens/USDC.svg",
+            "contractAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+          },
+
+            "symbol": "USDT",
+            "logoUrl": "https://file-cdn.meshconnect.com/public/logos/tokens/USDT.svg",
+            "contractAddress": "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+
+        ],
+        "supportedBrokerTypes": [
+          "deFiWallet",
+          "robinhood",
+          "coinbase",
+          "kraken",
+          "binanceInternational",
+          "binanceUs"
+        ],
+        "addressPattern": "^0x[a-fA-F0-9]{40}$",
+        "supportedTokens": [
+          "ETH",
+          "USDC",
+          "USDT"
+        ],
+        "nativeSymbol": "ETH",
+        "id": "e3c7fdd8-b1fc-4e51-85ae-bb276e075611",
+        "name": "Ethereum",
+        "chainId": "1",
+        "logoUrl": "https://file-cdn.meshconnect.com/public/logos/networks/Ethereum.svg"
+
+
+  },
+  "status": "ok",
+  "message": "",
+  "errorHash": "3904604d",
+  "teamCode": "P4",
+  "errorType": ""
+
+```
+
+Assistant
+Responses are generated using AI and may contain mistakes.
