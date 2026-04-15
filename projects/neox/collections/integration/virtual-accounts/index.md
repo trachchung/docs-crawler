@@ -1,0 +1,6 @@
+<!-- Source: https://docs.neox.vn/docs/collections/integration/virtual-accounts -->
+
+[API create list of virtual accountschevron-right](https://docs.neox.vn/docs/collections/integration/virtual-accounts/api-create-list-of-virtual-accounts)[API update KYC virtual account informationchevron-right](https://docs.neox.vn/docs/collections/integration/virtual-accounts/api-update-kyc-virtual-account-information)[API update Virtual Account transaction data from merchantchevron-right](https://docs.neox.vn/docs/collections/integration/virtual-accounts/api-update-virtual-account-transaction-data-from-merchant)[API set active/inactive Virtual Accountchevron-right](https://docs.neox.vn/docs/collections/integration/virtual-accounts/set-active-virtual-account)[API get list virtual accountschevron-right](https://docs.neox.vn/docs/collections/integration/virtual-accounts/get-list-virtual-account)[API get detail virtual accountchevron-right](https://docs.neox.vn/docs/collections/integration/virtual-accounts/get-detail-virtual-account)
+[PreviousAPI upload filechevron-left](https://docs.neox.vn/docs/collections/integration/api-upload-kyc-file)[NextAPI create list of virtual accountschevron-right](https://docs.neox.vn/docs/collections/integration/virtual-accounts/api-create-list-of-virtual-accounts)
+Last updated 1 year ago
+Was this helpful?

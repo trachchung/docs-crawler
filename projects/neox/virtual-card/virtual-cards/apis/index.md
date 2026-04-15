@@ -1,0 +1,6 @@
+<!-- Source: https://docs.neox.vn/docs/virtual-card/virtual-cards/apis -->
+
+[API Create Virtual Cardchevron-right](https://docs.neox.vn/docs/virtual-card/virtual-cards/apis/api-create-virtual-card)[API Create List Virtual Cardschevron-right](https://docs.neox.vn/docs/virtual-card/virtual-cards/apis/api-create-virtual-cards)[API Get List Virtual Cardschevron-right](https://docs.neox.vn/docs/virtual-card/virtual-cards/apis/get-list-virtual-cards)[API Get Detail Virtual Cardchevron-right](https://docs.neox.vn/docs/virtual-card/virtual-cards/apis/get-detail-virtual-card)[API Get Virtual Card Sensitive Datachevron-right](https://docs.neox.vn/docs/virtual-card/virtual-cards/apis/get-detail-virtual-card-info)[API Set Active Virtual Cardchevron-right](https://docs.neox.vn/docs/virtual-card/virtual-cards/apis/set-active-virtual-card)[API Update Virtual Card Userchevron-right](https://docs.neox.vn/docs/virtual-card/virtual-cards/apis/update-virtual-card-user)
+[PreviousVirtual Card Managementchevron-left](https://docs.neox.vn/docs/virtual-card/virtual-cards)[NextAPI Create Virtual Cardchevron-right](https://docs.neox.vn/docs/virtual-card/virtual-cards/apis/api-create-virtual-card)
+Last updated 10 months ago
+Was this helpful?
