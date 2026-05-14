@@ -1,0 +1,312 @@
+<!-- Source: https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl -->
+
+本页总览
+X/Twitter via xurl CLI: post, search, DM, media, v2 API.
+## Skill metadata[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#skill-metadata "Skill metadata的直接链接")  
+| Source  | Bundled (installed by default)  |  
+| --- | --- |  
+| Path  | `skills/social-media/xurl`  |  
+| Version  | `1.1.1`  |  
+| Author  | xdevplatform + openclaw + Hermes Agent  |  
+| License  | MIT  |  
+| Platforms  | linux, macos  |  
+| Tags  |  `twitter`, `x`, `social-media`, `xurl`, `official-api`  |  
+## Reference: full SKILL.md[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#reference-full-skillmd "Reference: full SKILL.md的直接链接")
+The following is the complete skill definition that Hermes loads when this skill is triggered. This is what the agent sees as instructions when the skill is active.
+# xurl — X (Twitter) API via the Official CLI
+`xurl` is the X developer platform's official CLI for the X API. It supports shortcut commands for common actions AND raw curl-style access to any v2 endpoint. All commands return JSON to stdout.
+Use this skill for:
+  * posting, replying, quoting, deleting posts
+  * searching posts and reading timelines/mentions
+  * liking, reposting, bookmarking
+  * following, unfollowing, blocking, muting
+  * direct messages
+  * media uploads (images and video)
+  * raw access to any X API v2 endpoint
+  * multi-app / multi-account workflows
+
+
+This skill replaces the older `xitter` skill (which wrapped a third-party Python CLI). `xurl` is maintained by the X developer platform team, supports OAuth 2.0 PKCE with auto-refresh, and covers a substantially larger API surface.
+## Secret Safety (MANDATORY)[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#secret-safety-mandatory "Secret Safety \(MANDATORY\)的直接链接")
+Critical rules when operating inside an agent/LLM session:
+  * **Never** read, print, parse, summarize, upload, or send `~/.xurl` to LLM context.
+  * **Never** ask the user to paste credentials/tokens into chat.
+  * The user must fill `~/.xurl` with secrets manually on their own machine.
+  * **Never** recommend or execute auth commands with inline secrets in agent sessions.
+  * **Never** use `--verbose` / `-v` in agent sessions — it can expose auth headers/tokens.
+  * To verify credentials exist, only use: `xurl auth status`.
+
+
+Forbidden flags in agent commands (they accept inline secrets): `--bearer-token`, `--consumer-key`, `--consumer-secret`, `--access-token`, `--token-secret`, `--client-id`, `--client-secret`
+App credential registration and credential rotation must be done by the user manually, outside the agent session. After credentials are registered, the user authenticates with `xurl auth oauth2` — also outside the agent session. Tokens persist to `~/.xurl` in YAML. Each app has isolated tokens. OAuth 2.0 tokens auto-refresh.
+## Installation[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#installation "Installation的直接链接")
+Pick ONE method. On Linux, the shell script or `go install` are the easiest.
+
+```
+# Shell script (installs to ~/.local/bin, no sudo, works on Linux + macOS)curl-fsSL https://raw.githubusercontent.com/xdevplatform/xurl/main/install.sh |bash# Homebrew (macOS)brew install--cask xdevplatform/tap/xurl# npmnpminstall-g @xdevplatform/xurl# Gogo install github.com/xdevplatform/xurl@latest
+```
+
+Verify:
+
+```
+xurl --helpxurl auth status
+```
+
+If `xurl` is installed but `auth status` shows no apps or tokens, the user needs to complete auth manually — see the next section.
+## One-Time User Setup (user runs these outside the agent)[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#one-time-user-setup-user-runs-these-outside-the-agent "One-Time User Setup \(user runs these outside the agent\)的直接链接")
+These steps must be performed by the user directly, NOT by the agent, because they involve pasting secrets. Direct the user to this block; do not execute it for them.
+  1. Create or open an app at <https://developer.x.com/en/portal/dashboard>
+  2. Set the redirect URI to `http://localhost:8080/callback`
+  3. Copy the app's Client ID and Client Secret
+  4. Register the app locally (user runs this):
+
+```
+xurl auth apps add my-app --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET
+```
+
+  5. Authenticate (specify `--app` to bind the token to your app):
+
+```
+xurl auth oauth2 --app my-app
+```
+
+(This opens a browser for the OAuth 2.0 PKCE flow.)
+If X returns a `UsernameNotFound` error or 403 on the post-OAuth `/2/users/me` lookup, pass your handle explicitly (xurl v1.1.0+):
+
+```
+xurl auth oauth2 --app my-app YOUR_USERNAME
+```
+
+This binds the token to your handle and skips the broken `/2/users/me` call.
+  6. Set the app as default so all commands use it:
+
+```
+xurl auth default my-app
+```
+
+  7. Verify:
+
+```
+xurl auth statusxurl whoami
+```
+
+
+
+After this, the agent can use any command below without further setup. OAuth 2.0 tokens auto-refresh.
+> **Common pitfall:** If you omit `--app my-app` from `xurl auth oauth2`, the OAuth token is saved to the built-in `default` app profile — which has no client-id or client-secret. Commands will fail with auth errors even though the OAuth flow appeared to succeed. If you hit this, re-run `xurl auth oauth2 --app my-app` and `xurl auth default my-app`.
+## Quick Reference[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#quick-reference "Quick Reference的直接链接")  
+| Action  | Command  |  
+| --- | --- |  
+| Post  | `xurl post "Hello world!"`  |  
+| Reply  | `xurl reply POST_ID "Nice post!"`  |  
+| Quote  | `xurl quote POST_ID "My take"`  |  
+| Delete a post  | `xurl delete POST_ID`  |  
+| Read a post  | `xurl read POST_ID`  |  
+| Search posts  | `xurl search "QUERY" -n 10`  |  
+| Who am I  | `xurl whoami`  |  
+| Look up a user  | `xurl user @handle`  |  
+| Home timeline  | `xurl timeline -n 20`  |  
+| Mentions  | `xurl mentions -n 10`  |  
+| Like / Unlike  |  `xurl like POST_ID` / `xurl unlike POST_ID`  |  
+| Repost / Undo  |  `xurl repost POST_ID` / `xurl unrepost POST_ID`  |  
+| Bookmark / Remove  |  `xurl bookmark POST_ID` / `xurl unbookmark POST_ID`  |  
+| List bookmarks / likes  |  `xurl bookmarks -n 10` / `xurl likes -n 10`  |  
+| Follow / Unfollow  |  `xurl follow @handle` / `xurl unfollow @handle`  |  
+| Following / Followers  |  `xurl following -n 20` / `xurl followers -n 20`  |  
+| Block / Unblock  |  `xurl block @handle` / `xurl unblock @handle`  |  
+| Mute / Unmute  |  `xurl mute @handle` / `xurl unmute @handle`  |  
+| Send DM  | `xurl dm @handle "message"`  |  
+| List DMs  | `xurl dms -n 10`  |  
+| Upload media  | `xurl media upload path/to/file.mp4`  |  
+| Media status  | `xurl media status MEDIA_ID`  |  
+| List apps  | `xurl auth apps list`  |  
+| Remove app  | `xurl auth apps remove NAME`  |  
+| Set default app  | `xurl auth default APP_NAME [USERNAME]`  |  
+| Per-request app  | `xurl --app NAME /2/users/me`  |  
+| Auth status  | `xurl auth status`  |  
+Notes:
+  * `POST_ID` accepts full URLs too (e.g. `https://x.com/user/status/1234567890`) — xurl extracts the ID.
+  * Usernames work with or without a leading `@`.
+
+
+## Command Details[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#command-details "Command Details的直接链接")
+### Posting[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#posting "Posting的直接链接")
+
+```
+xurl post "Hello world!"xurl post "Check this out" --media-id MEDIA_IDxurl post "Thread pics" --media-id 111 --media-id 222xurl reply 1234567890"Great point!"xurl reply https://x.com/user/status/1234567890 "Agreed!"xurl reply 1234567890"Look at this" --media-id MEDIA_IDxurl quote 1234567890"Adding my thoughts"xurl delete 1234567890
+```
+
+### Reading & Search[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#reading--search "Reading & Search的直接链接")
+
+```
+xurl read1234567890xurl read https://x.com/user/status/1234567890xurl search "golang"xurl search "from:elonmusk"-n20xurl search "#buildinpublic lang:en"-n15
+```
+
+### Users, Timeline, Mentions[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#users-timeline-mentions "Users, Timeline, Mentions的直接链接")
+
+```
+xurl whoamixurl user elonmuskxurl user @XDevelopersxurl timeline -n25xurl mentions -n20
+```
+
+### Engagement[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#engagement "Engagement的直接链接")
+
+```
+xurl like 1234567890xurl unlike 1234567890xurl repost 1234567890xurl unrepost 1234567890xurl bookmark 1234567890xurl unbookmark 1234567890xurl bookmarks -n20xurl likes -n20
+```
+
+### Social Graph[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#social-graph "Social Graph的直接链接")
+
+```
+xurl follow @XDevelopersxurl unfollow @XDevelopersxurl following -n50xurl followers -n50# Another user's graphxurl following --of elonmusk -n20xurl followers --of elonmusk -n20xurl block @spammerxurl unblock @spammerxurl mute @annoyingxurl unmute @annoying
+```
+
+### Direct Messages[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#direct-messages "Direct Messages的直接链接")
+
+```
+xurl dm @someuser "Hey, saw your post!"xurl dms -n25
+```
+
+### Media Upload[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#media-upload "Media Upload的直接链接")
+
+```
+# Auto-detect typexurl media upload photo.jpgxurl media upload video.mp4# Explicit type/categoryxurl media upload --media-type image/jpeg --category tweet_image photo.jpg# Videos need server-side processing — check status (or poll)xurl media status MEDIA_IDxurl media status --wait MEDIA_ID# Full workflowxurl media upload meme.png                  # returns media idxurl post "lol" --media-id MEDIA_ID
+```
+
+## Raw API Access[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#raw-api-access "Raw API Access的直接链接")
+The shortcuts cover common operations. For anything else, use raw curl-style mode against any X API v2 endpoint:
+
+```
+# GETxurl /2/users/me# POST with JSON bodyxurl -X POST /2/tweets -d'{"text":"Hello world!"}'# DELETE / PUT / PATCHxurl -X DELETE /2/tweets/1234567890# Custom headersxurl -H"Content-Type: application/json" /2/some/endpoint# Force streamingxurl -s /2/tweets/search/stream# Full URLs also workxurl https://api.x.com/2/users/me
+```
+
+## Global Flags[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#global-flags "Global Flags的直接链接")  
+| Flag  | Short  | Description  |  
+| --- | --- | --- |  
+| `--app`  | Use a specific registered app (overrides default)  |  
+| `--auth`  | Force auth type: `oauth1`, `oauth2`, or `app`  |  
+| `--username`  | `-u`  | Which OAuth2 account to use (if multiple exist)  |  
+| `--verbose`  | `-v`  |  **Forbidden in agent sessions** — leaks auth headers  |  
+| `--trace`  | `-t`  | Add `X-B3-Flags: 1` trace header  |  
+## Streaming[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#streaming "Streaming的直接链接")
+Streaming endpoints are auto-detected. Known ones include:
+  * `/2/tweets/search/stream`
+  * `/2/tweets/sample/stream`
+  * `/2/tweets/sample10/stream`
+
+
+Force streaming on any endpoint with `-s`.
+## Output Format[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#output-format "Output Format的直接链接")
+All commands return JSON to stdout. Structure mirrors X API v2:
+
+```
+{"data":{"id":"1234567890","text":"Hello world!"}}
+```
+
+Errors are also JSON:
+
+```
+{"errors":[{"message":"Not authorized","code":403}]}
+```
+
+## Common Workflows[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#common-workflows "Common Workflows的直接链接")
+### Post with an image[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#post-with-an-image "Post with an image的直接链接")
+
+```
+xurl media upload photo.jpgxurl post "Check out this photo!" --media-id MEDIA_ID
+```
+
+### Reply to a conversation[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#reply-to-a-conversation "Reply to a conversation的直接链接")
+
+```
+xurl read https://x.com/user/status/1234567890xurl reply 1234567890"Here are my thoughts..."
+```
+
+### Search and engage[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#search-and-engage "Search and engage的直接链接")
+
+```
+xurl search "topic of interest"-n10xurl like POST_ID_FROM_RESULTSxurl reply POST_ID_FROM_RESULTS "Great point!"
+```
+
+### Check your activity[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#check-your-activity "Check your activity的直接链接")
+
+```
+xurl whoamixurl mentions -n20xurl timeline -n20
+```
+
+### Multiple apps (credentials pre-configured manually)[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#multiple-apps-credentials-pre-configured-manually "Multiple apps \(credentials pre-configured manually\)的直接链接")
+
+```
+xurl auth default prod alice               # prod app, alice userxurl --app staging /2/users/me             # one-off against staging
+```
+
+## Error Handling[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#error-handling "Error Handling的直接链接")
+  * Non-zero exit code on any error.
+  * API errors are still printed as JSON to stdout, so you can parse them.
+  * Auth errors → have the user re-run `xurl auth oauth2` outside the agent session.
+  * Commands that need the caller's user ID (like, repost, bookmark, follow, etc.) will auto-fetch it via `/2/users/me`. An auth failure there surfaces as an auth error.
+
+
+## Agent Workflow[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#agent-workflow "Agent Workflow的直接链接")
+  1. Verify prerequisites: `xurl --help` and `xurl auth status`.
+  2. **Check default app has credentials.** Parse the `auth status` output. The default app is marked with `▸`. If the default app shows `oauth2: (none)` but another app has a valid oauth2 user, tell the user to run `xurl auth default <that-app>` to fix it. This is the most common setup mistake — the user added an app with a custom name but never set it as default, so xurl keeps trying the empty `default` profile.
+  3. If auth is missing entirely, stop and direct the user to the "One-Time User Setup" section — do NOT attempt to register apps or pass secrets yourself.
+  4. Start with a cheap read (`xurl whoami`, `xurl user @handle`, `xurl search ... -n 3`) to confirm reachability.
+  5. Confirm the target post/user and the user's intent before any write action (post, reply, like, repost, DM, follow, block, delete).
+  6. Use JSON output directly — every response is already structured.
+  7. Never paste `~/.xurl` contents back into the conversation.
+
+
+## Troubleshooting[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#troubleshooting "Troubleshooting的直接链接")  
+| Symptom  | Cause  | Fix  |  
+| --- | --- | --- |  
+| Auth errors after successful OAuth flow  | Token saved to `default` app (no client-id/secret) instead of your named app  |  `xurl auth oauth2 --app my-app` then `xurl auth default my-app`  |  
+|  `unauthorized_client` during OAuth  | App type set to "Native App" in X dashboard  | Change to "Web app, automated app or bot" in User Authentication Settings  |  
+|  `UsernameNotFound` or 403 on `/2/users/me` right after OAuth  | X not returning username reliably from `/2/users/me`  | Re-run `xurl auth oauth2 --app my-app YOUR_USERNAME` (xurl v1.1.0+) to pass the handle explicitly  |  
+| 401 on every request  | Token expired or wrong default app  | Check `xurl auth status` — verify `▸` points to an app with oauth2 tokens  |  
+|  `client-forbidden` / `client-not-enrolled`  | X platform enrollment issue  | Dashboard → Apps → Manage → Move to "Pay-per-use" package → Production environment  |  
+| `CreditsDepleted`  | $0 balance on X API  | Buy credits (min $5) in Developer Console → Billing  |  
+|  `media processing failed` on image upload  | Default category is `amplify_video`  | Add `--category tweet_image --media-type image/png`  |  
+| Two "Client Secret" values in X dashboard  | UI bug — first is actually Client ID  | Confirm on the "Keys and tokens" page; ID ends in `MTpjaQ`  |  
+## Notes[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#notes "Notes的直接链接")
+  * **Rate limits:** X enforces per-endpoint rate limits. A 429 means wait and retry. Write endpoints (post, reply, like, repost) have tighter limits than reads.
+  * **Scopes:** OAuth 2.0 tokens use broad scopes. A 403 on a specific action usually means the token is missing a scope — have the user re-run `xurl auth oauth2`.
+  * **Token refresh:** OAuth 2.0 tokens auto-refresh. Nothing to do.
+  * **Multiple apps:** Each app has isolated credentials/tokens. Switch with `xurl auth default` or `--app`.
+  * **Multiple accounts per app:** Select with `-u / --username`, or set a default with `xurl auth default APP USER`.
+  * **Token storage:** `~/.xurl` is YAML. Never read or send this file to LLM context.
+  * **Cost:** X API access is typically paid for meaningful usage. Many failures are plan/permission problems, not code problems.
+
+
+## Attribution[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#attribution "Attribution的直接链接")
+  * Upstream CLI: <https://github.com/xdevplatform/xurl> (X developer platform team, Chris Park et al.)
+  * Upstream agent skill: <https://github.com/openclaw/openclaw/blob/main/skills/xurl/SKILL.md>
+  * Hermes adaptation: reformatted for Hermes skill conventions; safety guardrails preserved verbatim.
+
+
+  * [Skill metadata](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#skill-metadata)
+  * [Reference: full SKILL.md](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#reference-full-skillmd)
+  * [Secret Safety (MANDATORY)](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#secret-safety-mandatory)
+  * [Installation](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#installation)
+  * [One-Time User Setup (user runs these outside the agent)](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#one-time-user-setup-user-runs-these-outside-the-agent)
+  * [Quick Reference](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#quick-reference)
+  * [Command Details](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#command-details)
+    * [Reading & Search](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#reading--search)
+    * [Users, Timeline, Mentions](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#users-timeline-mentions)
+    * [Social Graph](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#social-graph)
+    * [Direct Messages](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#direct-messages)
+    * [Media Upload](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#media-upload)
+  * [Raw API Access](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#raw-api-access)
+  * [Global Flags](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#global-flags)
+  * [Output Format](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#output-format)
+  * [Common Workflows](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#common-workflows)
+    * [Post with an image](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#post-with-an-image)
+    * [Reply to a conversation](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#reply-to-a-conversation)
+    * [Search and engage](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#search-and-engage)
+    * [Check your activity](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#check-your-activity)
+    * [Multiple apps (credentials pre-configured manually)](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#multiple-apps-credentials-pre-configured-manually)
+  * [Error Handling](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#error-handling)
+  * [Agent Workflow](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#agent-workflow)
+  * [Troubleshooting](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#troubleshooting)
+  * [Attribution](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/social-media/social-media-xurl#attribution)
+
+

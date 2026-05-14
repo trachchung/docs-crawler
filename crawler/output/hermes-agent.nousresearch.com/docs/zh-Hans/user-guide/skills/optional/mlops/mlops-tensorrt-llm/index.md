@@ -1,0 +1,152 @@
+<!-- Source: https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm -->
+
+本页总览
+Optimizes LLM inference with NVIDIA TensorRT for maximum throughput and lowest latency. Use for production deployment on NVIDIA GPUs (A100/H100), when you need 10-100x faster inference than PyTorch, or for serving models with quantization (FP8/INT4), in-flight batching, and multi-GPU scaling.
+## Skill metadata[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#skill-metadata "Skill metadata的直接链接")  
+| Source  | Optional — install with `hermes skills install official/mlops/tensorrt-llm`  |  
+| --- | --- |  
+| Path  | `optional-skills/mlops/tensorrt-llm`  |  
+| Version  | `1.0.0`  |  
+| Author  | Orchestra Research  |  
+| License  | MIT  |  
+| Dependencies  |  `tensorrt-llm`, `torch`  |  
+| Platforms  | linux, macos  |  
+| Tags  |  `Inference Serving`, `TensorRT-LLM`, `NVIDIA`, `Inference Optimization`, `High Throughput`, `Low Latency`, `Production`, `FP8`, `INT4`, `In-Flight Batching`, `Multi-GPU`  |  
+## Reference: full SKILL.md[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#reference-full-skillmd "Reference: full SKILL.md的直接链接")
+The following is the complete skill definition that Hermes loads when this skill is triggered. This is what the agent sees as instructions when the skill is active.
+# TensorRT-LLM
+NVIDIA's open-source library for optimizing LLM inference with state-of-the-art performance on NVIDIA GPUs.
+## When to use TensorRT-LLM[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#when-to-use-tensorrt-llm "When to use TensorRT-LLM的直接链接")
+**Use TensorRT-LLM when:**
+  * Deploying on NVIDIA GPUs (A100, H100, GB200)
+  * Need maximum throughput (24,000+ tokens/sec on Llama 3)
+  * Require low latency for real-time applications
+  * Working with quantized models (FP8, INT4, FP4)
+  * Scaling across multiple GPUs or nodes
+
+
+**Use vLLM instead when:**
+  * Need simpler setup and Python-first API
+  * Want PagedAttention without TensorRT compilation
+  * Working with AMD GPUs or non-NVIDIA hardware
+
+
+**Use llama.cpp instead when:**
+  * Deploying on CPU or Apple Silicon
+  * Need edge deployment without NVIDIA GPUs
+  * Want simpler GGUF quantization format
+
+
+## Quick start[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#quick-start "Quick start的直接链接")
+### Installation[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#installation "Installation的直接链接")
+
+```
+# Docker (recommended)docker pull nvidia/tensorrt_llm:latest# pip installpip installtensorrt_llm==1.2.0rc3# Requires CUDA 13.0.0, TensorRT 10.13.2, Python 3.10-3.12
+```
+
+### Basic inference[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#basic-inference "Basic inference的直接链接")
+
+```
+from tensorrt_llm import LLM, SamplingParams# Initialize modelllm = LLM(model="meta-llama/Meta-Llama-3-8B")# Configure samplingsampling_params = SamplingParams(    max_tokens=100,    temperature=0.7,    top_p=0.9# Generateprompts =["Explain quantum computing"]outputs = llm.generate(prompts, sampling_params)for output in outputs:print(output.text)
+```
+
+### Serving with trtllm-serve[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#serving-with-trtllm-serve "Serving with trtllm-serve的直接链接")
+
+```
+# Start server (automatic model download and compilation)trtllm-serve meta-llama/Meta-Llama-3-8B \--tp_size4\# Tensor parallelism (4 GPUs)--max_batch_size256\--max_num_tokens4096# Client requestcurl-X POST http://localhost:8000/v1/chat/completions \-H"Content-Type: application/json"\-d'{    "model": "meta-llama/Meta-Llama-3-8B",    "messages": [{"role": "user", "content": "Hello!"}],    "temperature": 0.7,    "max_tokens": 100
+```
+
+## Key features[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#key-features "Key features的直接链接")
+### Performance optimizations[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#performance-optimizations "Performance optimizations的直接链接")
+  * **In-flight batching** : Dynamic batching during generation
+  * **Paged KV cache** : Efficient memory management
+  * **Flash Attention** : Optimized attention kernels
+  * **Quantization** : FP8, INT4, FP4 for 2-4× faster inference
+  * **CUDA graphs** : Reduced kernel launch overhead
+
+
+### Parallelism[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#parallelism "Parallelism的直接链接")
+  * **Tensor parallelism (TP)** : Split model across GPUs
+  * **Pipeline parallelism (PP)** : Layer-wise distribution
+  * **Expert parallelism** : For Mixture-of-Experts models
+  * **Multi-node** : Scale beyond single machine
+
+
+### Advanced features[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#advanced-features "Advanced features的直接链接")
+  * **Speculative decoding** : Faster generation with draft models
+  * **LoRA serving** : Efficient multi-adapter deployment
+  * **Disaggregated serving** : Separate prefill and generation
+
+
+## Common patterns[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#common-patterns "Common patterns的直接链接")
+### Quantized model (FP8)[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#quantized-model-fp8 "Quantized model \(FP8\)的直接链接")
+
+```
+from tensorrt_llm import LLM# Load FP8 quantized model (2× faster, 50% memory)llm = LLM(    model="meta-llama/Meta-Llama-3-70B",    dtype="fp8",    max_num_tokens=8192# Inference same as beforeoutputs = llm.generate(["Summarize this article..."])
+```
+
+### Multi-GPU deployment[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#multi-gpu-deployment "Multi-GPU deployment的直接链接")
+
+```
+# Tensor parallelism across 8 GPUsllm = LLM(    model="meta-llama/Meta-Llama-3-405B",    tensor_parallel_size=8,    dtype="fp8"
+```
+
+### Batch inference[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#batch-inference "Batch inference的直接链接")
+
+```
+# Process 100 prompts efficientlyprompts =[f"Question {i}: ..."for i inrange(100)]outputs = llm.generate(    prompts,    sampling_params=SamplingParams(max_tokens=200)# Automatic in-flight batching for maximum throughput
+```
+
+## Performance benchmarks[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#performance-benchmarks "Performance benchmarks的直接链接")
+**Meta Llama 3-8B** (H100 GPU):
+  * Throughput: 24,000 tokens/sec
+  * Latency: ~10ms per token
+  * vs PyTorch: **100× faster**
+
+
+**Llama 3-70B** (8× A100 80GB):
+  * FP8 quantization: 2× faster than FP16
+  * Memory: 50% reduction with FP8
+
+
+## Supported models[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#supported-models "Supported models的直接链接")
+  * **LLaMA family** : Llama 2, Llama 3, CodeLlama
+  * **GPT family** : GPT-2, GPT-J, GPT-NeoX
+  * **Qwen** : Qwen, Qwen2, QwQ
+  * **DeepSeek** : DeepSeek-V2, DeepSeek-V3
+  * **Mixtral** : Mixtral-8x7B, Mixtral-8x22B
+  * **Vision** : LLaVA, Phi-3-vision
+  * **100+ models** on HuggingFace
+
+
+## References[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#references "References的直接链接")
+  * **[Optimization Guide](https://github.com/NousResearch/hermes-agent/blob/main/optional-skills/mlops/tensorrt-llm/references/optimization.md)** - Quantization, batching, KV cache tuning
+  * **[Multi-GPU Setup](https://github.com/NousResearch/hermes-agent/blob/main/optional-skills/mlops/tensorrt-llm/references/multi-gpu.md)** - Tensor/pipeline parallelism, multi-node
+  * - Production deployment, monitoring, autoscaling
+
+
+## Resources[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#resources "Resources的直接链接")
+  * **Docs** : <https://nvidia.github.io/TensorRT-LLM/>
+  * **GitHub** : <https://github.com/NVIDIA/TensorRT-LLM>
+  * **Models** : <https://huggingface.co/models?library=tensorrt_llm>
+
+
+  * [Skill metadata](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#skill-metadata)
+  * [Reference: full SKILL.md](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#reference-full-skillmd)
+  * [When to use TensorRT-LLM](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#when-to-use-tensorrt-llm)
+  * [Quick start](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#quick-start)
+    * [Installation](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#installation)
+    * [Basic inference](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#basic-inference)
+    * [Serving with trtllm-serve](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#serving-with-trtllm-serve)
+  * [Key features](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#key-features)
+    * [Performance optimizations](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#performance-optimizations)
+    * [Parallelism](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#parallelism)
+    * [Advanced features](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#advanced-features)
+  * [Common patterns](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#common-patterns)
+    * [Quantized model (FP8)](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#quantized-model-fp8)
+    * [Multi-GPU deployment](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#multi-gpu-deployment)
+    * [Batch inference](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#batch-inference)
+  * [Performance benchmarks](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#performance-benchmarks)
+  * [Supported models](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/optional/mlops/mlops-tensorrt-llm#supported-models)
+
+

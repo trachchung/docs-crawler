@@ -1,0 +1,137 @@
+<!-- Source: https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin -->
+
+本页总览
+Memory provider plugins give Hermes Agent persistent, cross-session knowledge beyond the built-in MEMORY.md and USER.md. This guide covers how to build one.
+Memory providers are one of two **provider plugin** types. The other is [Context Engine Plugins](https://hermes-agent.nousresearch.com/docs/zh-Hans/docs/developer-guide/context-engine-plugin), which replace the built-in context compressor. Both follow the same pattern: single-select, config-driven, managed via `hermes plugins`.
+## Directory Structure[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#directory-structure "Directory Structure的直接链接")
+Each memory provider lives in `plugins/memory/<name>/`:
+
+```
+plugins/memory/my-provider/├── __init__.py      # MemoryProvider implementation + register() entry point├── plugin.yaml      # Metadata (name, description, hooks)└── README.md        # Setup instructions, config reference, tools
+```
+
+## The MemoryProvider ABC[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#the-memoryprovider-abc "The MemoryProvider ABC的直接链接")
+Your plugin implements the `MemoryProvider` abstract base class from `agent/memory_provider.py`:
+
+```
+from agent.memory_provider import MemoryProviderclassMyMemoryProvider(MemoryProvider):@propertydefname(self)->str:return"my-provider"defis_available(self)->bool:"""Check if this provider can activate. NO network calls."""returnbool(os.environ.get("MY_API_KEY"))definitialize(self, session_id:str,**kwargs)->None:"""Called once at agent startup.        kwargs always includes:          hermes_home (str): Active HERMES_HOME path. Use for storage.        """        self._api_key = os.environ.get("MY_API_KEY","")        self._session_id = session_id# ... implement remaining methods
+```
+
+## Required Methods[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#required-methods "Required Methods的直接链接")
+### Core Lifecycle[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#core-lifecycle "Core Lifecycle的直接链接")  
+| Method  | When Called  | Must Implement?  |  
+| --- | --- | --- |  
+|  `name` (property)  | Always  | **Yes**  |  
+| `is_available()`  | Agent init, before activation  |  **Yes** — no network calls  |  
+| `initialize(session_id, **kwargs)`  | Agent startup  | **Yes**  |  
+| `get_tool_schemas()`  | After init, for tool injection  | **Yes**  |  
+| `handle_tool_call(name, args)`  | When agent uses your tools  |  **Yes** (if you have tools)  |  
+### Config[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#config "Config的直接链接")  
+| Method  | Purpose  | Must Implement?  |  
+| --- | --- | --- |  
+| `get_config_schema()`  | Declare config fields for `hermes memory setup`  | **Yes**  |  
+| `save_config(values, hermes_home)`  | Write non-secret config to native location  |  **Yes** (unless env-var-only)  |  
+### Optional Hooks[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#optional-hooks "Optional Hooks的直接链接")  
+| Method  | When Called  | Use Case  |  
+| --- | --- | --- |  
+| `system_prompt_block()`  | System prompt assembly  | Static provider info  |  
+| `prefetch(query)`  | Before each API call  | Return recalled context  |  
+| `queue_prefetch(query)`  | After each turn  | Pre-warm for next turn  |  
+| `sync_turn(user, assistant)`  | After each completed turn  | Persist conversation  |  
+| `on_session_end(messages)`  | Conversation ends  | Final extraction/flush  |  
+| `on_pre_compress(messages)`  | Before context compression  | Save insights before discard  |  
+| `on_memory_write(action, target, content)`  | Built-in memory writes  | Mirror to your backend  |  
+| `shutdown()`  | Process exit  | Clean up connections  |  
+## Config Schema[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#config-schema "Config Schema的直接链接")
+`get_config_schema()` returns a list of field descriptors used by `hermes memory setup`:
+
+```
+defget_config_schema(self):return["key":"api_key","description":"My Provider API key","secret":True,# → written to .env"required":True,"env_var":"MY_API_KEY",# explicit env var name"url":"https://my-provider.com/keys",# where to get it"key":"region","description":"Server region","default":"us-east","choices":["us-east","eu-west","ap-south"],"key":"project","description":"Project identifier","default":"hermes",
+```
+
+Fields with `secret: True` and `env_var` go to `.env`. Non-secret fields are passed to `save_config()`.
+Every field in `get_config_schema()` is prompted during `hermes memory setup`. Providers with many options should keep the schema minimal — only include fields the user **must** configure (API key, required credentials). Document optional settings in a config file reference (e.g. `$HERMES_HOME/myprovider.json`) rather than prompting for them all during setup. This keeps the setup wizard fast while still supporting advanced configuration. See the Supermemory provider for an example — it only prompts for the API key; all other options live in `supermemory.json`.
+## Save Config[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#save-config "Save Config的直接链接")
+
+```
+defsave_config(self, values:dict, hermes_home:str)->None:"""Write non-secret config to your native location."""import jsonfrom pathlib import Path    config_path = Path(hermes_home)/"my-provider.json"    config_path.write_text(json.dumps(values, indent=2))
+```
+
+For env-var-only providers, leave the default no-op.
+## Plugin Entry Point[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#plugin-entry-point "Plugin Entry Point的直接链接")
+
+```
+defregister(ctx)->None:"""Called by the memory plugin discovery system."""    ctx.register_memory_provider(MyMemoryProvider())
+```
+
+## plugin.yaml[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#pluginyaml "plugin.yaml的直接链接")
+
+```
+name: my-providerversion: 1.0.0description:"Short description of what this provider does."hooks:- on_session_end    # list hooks you implement
+```
+
+## Threading Contract[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#threading-contract "Threading Contract的直接链接")
+**`sync_turn()`MUST be non-blocking.** If your backend has latency (API calls, LLM processing), run the work in a daemon thread:
+
+```
+defsync_turn(self, user_content, assistant_content):def_sync():try:            self._api.ingest(user_content, assistant_content)except Exception as e:            logger.warning("Sync failed: %s", e)if self._sync_thread and self._sync_thread.is_alive():        self._sync_thread.join(timeout=5.0)    self._sync_thread = threading.Thread(target=_sync, daemon=True)    self._sync_thread.start()
+```
+
+## Profile Isolation[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#profile-isolation "Profile Isolation的直接链接")
+All storage paths **must** use the `hermes_home` kwarg from `initialize()`, not hardcoded `~/.hermes`:
+
+```
+# CORRECT — profile-scopedfrom hermes_constants import get_hermes_homedata_dir = get_hermes_home()/"my-provider"# WRONG — shared across all profilesdata_dir = Path("~/.hermes/my-provider").expanduser()
+```
+
+## Testing[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#testing "Testing的直接链接")
+See `tests/agent/test_memory_plugin_e2e.py` for the complete E2E testing pattern using a real SQLite provider.
+
+```
+from agent.memory_manager import MemoryManagermgr = MemoryManager()mgr.add_provider(my_provider)mgr.initialize_all(session_id="test-1", platform="cli")# Test tool routingresult = mgr.handle_tool_call("my_tool",{"action":"add","content":"test"})# Test lifecyclemgr.sync_all("user msg","assistant msg")mgr.on_session_end([])mgr.shutdown_all()
+```
+
+## Adding CLI Commands[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#adding-cli-commands "Adding CLI Commands的直接链接")
+Memory provider plugins can register their own CLI subcommand tree (e.g. `hermes my-provider status`, `hermes my-provider config`). This uses a convention-based discovery system — no changes to core files needed.
+### How it works[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#how-it-works "How it works的直接链接")
+  1. Add a `cli.py` file to your plugin directory
+  2. Define a `register_cli(subparser)` function that builds the argparse tree
+  3. The memory plugin system discovers it at startup via `discover_plugin_cli_commands()`
+  4. Your commands appear under `hermes <provider-name> <subcommand>`
+
+
+**Active-provider gating:** Your CLI commands only appear when your provider is the active `memory.provider` in config. If a user hasn't configured your provider, your commands won't show in `hermes --help`.
+### Example[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#example "Example的直接链接")
+
+```
+# plugins/memory/my-provider/cli.pydefmy_command(args):"""Handler dispatched by argparse."""    sub =getattr(args,"my_command",None)if sub =="status":print("Provider is active and connected.")elif sub =="config":print("Showing config...")else:print("Usage: hermes my-provider <status|config>")defregister_cli(subparser)->None:"""Build the hermes my-provider argparse tree.    Called by discover_plugin_cli_commands() at argparse setup time.    """    subs = subparser.add_subparsers(dest="my_command")    subs.add_parser("status",help="Show provider status")    subs.add_parser("config",help="Show provider config")    subparser.set_defaults(func=my_command)
+```
+
+### Reference implementation[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#reference-implementation "Reference implementation的直接链接")
+See `plugins/memory/honcho/cli.py` for a full example with 13 subcommands, cross-profile management (`--target-profile`), and config read/write.
+### Directory structure with CLI[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#directory-structure-with-cli "Directory structure with CLI的直接链接")
+
+```
+plugins/memory/my-provider/├── __init__.py      # MemoryProvider implementation + register()├── plugin.yaml      # Metadata├── cli.py           # register_cli(subparser) — CLI commands└── README.md        # Setup instructions
+```
+
+## Single Provider Rule[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#single-provider-rule "Single Provider Rule的直接链接")
+Only **one** external memory provider can be active at a time. If a user tries to register a second, the MemoryManager rejects it with a warning. This prevents tool schema bloat and conflicting backends.
+  * [Directory Structure](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#directory-structure)
+  * [The MemoryProvider ABC](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#the-memoryprovider-abc)
+  * [Required Methods](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#required-methods)
+    * [Core Lifecycle](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#core-lifecycle)
+    * [Optional Hooks](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#optional-hooks)
+  * [Config Schema](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#config-schema)
+  * [Save Config](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#save-config)
+  * [Plugin Entry Point](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#plugin-entry-point)
+  * [plugin.yaml](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#pluginyaml)
+  * [Threading Contract](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#threading-contract)
+  * [Profile Isolation](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#profile-isolation)
+  * [Adding CLI Commands](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#adding-cli-commands)
+    * [How it works](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#how-it-works)
+    * [Reference implementation](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#reference-implementation)
+    * [Directory structure with CLI](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#directory-structure-with-cli)
+  * [Single Provider Rule](https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/memory-provider-plugin#single-provider-rule)
+
+

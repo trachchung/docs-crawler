@@ -1,0 +1,47 @@
+<!-- Source: https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/productivity/productivity-nano-pdf -->
+
+本页总览
+Edit PDF text/typos/titles via nano-pdf CLI (NL prompts).
+## Skill metadata[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/productivity/productivity-nano-pdf#skill-metadata "Skill metadata的直接链接")  
+| Source  | Bundled (installed by default)  |  
+| --- | --- |  
+| Path  | `skills/productivity/nano-pdf`  |  
+| Version  | `1.0.0`  |  
+| Author  | community  |  
+| License  | MIT  |  
+| Platforms  | linux, macos, windows  |  
+| Tags  |  `PDF`, `Documents`, `Editing`, `NLP`, `Productivity`  |  
+## Reference: full SKILL.md[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/productivity/productivity-nano-pdf#reference-full-skillmd "Reference: full SKILL.md的直接链接")
+The following is the complete skill definition that Hermes loads when this skill is triggered. This is what the agent sees as instructions when the skill is active.
+# nano-pdf
+Edit PDFs using natural-language instructions. Point it at a page and describe what to change.
+## Prerequisites[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/productivity/productivity-nano-pdf#prerequisites "Prerequisites的直接链接")
+
+```
+# Install with uv (recommended — already available in Hermes)uv pip install nano-pdf# Or with pippip install nano-pdf
+```
+
+## Usage[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/productivity/productivity-nano-pdf#usage "Usage的直接链接")
+
+```
+nano-pdf edit <file.pdf><page_number>"<instruction>"
+```
+
+## Examples[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/productivity/productivity-nano-pdf#examples "Examples的直接链接")
+
+```
+# Change a title on page 1nano-pdf edit deck.pdf 1"Change the title to 'Q3 Results' and fix the typo in the subtitle"# Update a date on a specific pagenano-pdf edit report.pdf 3"Update the date from January to February 2026"# Fix contentnano-pdf edit contract.pdf 2"Change the client name from 'Acme Corp' to 'Acme Industries'"
+```
+
+## Notes[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/productivity/productivity-nano-pdf#notes "Notes的直接链接")
+  * Page numbers may be 0-based or 1-based depending on version — if the edit hits the wrong page, retry with ±1
+  * Always verify the output PDF after editing (use `read_file` to check file size, or open it)
+  * The tool uses an LLM under the hood — requires an API key (check `nano-pdf --help` for config)
+  * Works well for text changes; complex layout modifications may need a different approach
+
+
+  * [Skill metadata](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/productivity/productivity-nano-pdf#skill-metadata)
+  * [Reference: full SKILL.md](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/productivity/productivity-nano-pdf#reference-full-skillmd)
+  * [Prerequisites](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/skills/bundled/productivity/productivity-nano-pdf#prerequisites)
+
+

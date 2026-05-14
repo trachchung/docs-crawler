@@ -1,0 +1,146 @@
+<!-- Source: https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution -->
+
+本页总览
+The `execute_code` tool lets the agent write Python scripts that call Hermes tools programmatically, collapsing multi-step workflows into a single LLM turn. The script runs in a child process on the agent host, communicating with Hermes over a Unix domain socket RPC.
+## How It Works[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#how-it-works "How It Works的直接链接")
+  1. The agent writes a Python script using `from hermes_tools import ...`
+  2. Hermes generates a `hermes_tools.py` stub module with RPC functions
+  3. Hermes opens a Unix domain socket and starts an RPC listener thread
+  4. The script runs in a child process — tool calls travel over the socket back to Hermes
+  5. Only the script's `print()` output is returned to the LLM; intermediate tool results never enter the context window
+
+
+
+```
+# The agent can write scripts like:from hermes_tools import web_search, web_extractresults = web_search("Python 3.13 features", limit=5)for r in results["data"]["web"]:    content = web_extract([r["url"]])# ... filter and process ...print(summary)
+```
+
+**Available tools inside scripts:** `web_search`, `web_extract`, `read_file`, `write_file`, `search_files`, `patch`, `terminal` (foreground only).
+## When the Agent Uses This[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#when-the-agent-uses-this "When the Agent Uses This的直接链接")
+The agent uses `execute_code` when there are:
+  * **3+ tool calls** with processing logic between them
+  * Bulk data filtering or conditional branching
+  * Loops over results
+
+
+The key benefit: intermediate tool results never enter the context window — only the final `print()` output comes back, dramatically reducing token usage.
+## Practical Examples[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#practical-examples "Practical Examples的直接链接")
+### Data Processing Pipeline[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#data-processing-pipeline "Data Processing Pipeline的直接链接")
+
+```
+from hermes_tools import search_files, read_fileimport json# Find all config files and extract database settingsmatches = search_files("database", path=".", file_glob="*.yaml", limit=20)configs =[]formatchin matches.get("matches",[]):    content = read_file(match["path"])    configs.append({"file":match["path"],"preview": content["content"][:200]})print(json.dumps(configs, indent=2))
+```
+
+### Multi-Step Web Research[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#multi-step-web-research "Multi-Step Web Research的直接链接")
+
+```
+from hermes_tools import web_search, web_extractimport json# Search, extract, and summarize in one turnresults = web_search("Rust async runtime comparison 2025", limit=5)summaries =[]for r in results["data"]["web"]:    page = web_extract([r["url"]])for p in page.get("results",[]):if p.get("content"):            summaries.append({"title": r["title"],"url": r["url"],"excerpt": p["content"][:500]print(json.dumps(summaries, indent=2))
+```
+
+### Bulk File Refactoring[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#bulk-file-refactoring "Bulk File Refactoring的直接链接")
+
+```
+from hermes_tools import search_files, read_file, patch# Find all Python files using deprecated API and fix themmatches = search_files("old_api_call", path="src/", file_glob="*.py")fixed =0formatchin matches.get("matches",[]):    result = patch(        path=match["path"],        old_string="old_api_call(",        new_string="new_api_call(",        replace_all=Trueif"error"notinstr(result):        fixed +=1print(f"Fixed {fixed} files out of {len(matches.get('matches',[]))} matches")
+```
+
+### Build and Test Pipeline[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#build-and-test-pipeline "Build and Test Pipeline的直接链接")
+
+```
+from hermes_tools import terminal, read_fileimport json# Run tests, parse results, and reportresult = terminal("cd /project && python -m pytest --tb=short -q 2>&1", timeout=120)output = result.get("output","")# Parse test outputpassed = output.count(" passed")failed = output.count(" failed")errors = output.count(" error")report ={"passed": passed,"failed": failed,"errors": errors,"exit_code": result.get("exit_code",-1),"summary": output[-500:]iflen(output)>500else outputprint(json.dumps(report, indent=2))
+```
+
+## Execution Mode[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#execution-mode "Execution Mode的直接链接")
+`execute_code` has two execution modes controlled by `code_execution.mode` in `~/.hermes/config.yaml`:  
+| Mode  | Working directory  | Python interpreter  |  
+| --- | --- | --- |  
+|  **`project`**(default)  | The session's working directory (same as `terminal()`)  | Active `VIRTUAL_ENV` / `CONDA_PREFIX` python, falling back to Hermes's own python  |  
+| `strict`  | A temp staging directory isolated from the user's project  |  `sys.executable` (Hermes's own python)  |  
+**When to leave it on`project` :** you want `import pandas`, `from my_project import foo`, or relative paths like `open(".env")` to work the same way they do in `terminal()`. This is almost always what you want.
+**When to flip to`strict` :** you need maximum reproducibility — you want the same interpreter every session regardless of which venv the user activated, and you want scripts quarantined from the project tree (no risk of accidentally reading project files through a relative path).
+
+```
+# ~/.hermes/config.yamlcode_execution:mode: project   # or "strict"
+```
+
+Fallback behavior in `project` mode: if `VIRTUAL_ENV` / `CONDA_PREFIX` is unset, broken, or points at a Python older than 3.8, the resolver falls back cleanly to `sys.executable` — it never leaves the agent without a working interpreter.
+Security-critical invariants are identical across both modes:
+  * environment scrubbing (API keys, tokens, credentials stripped)
+  * tool whitelist (scripts cannot call `execute_code` recursively, `delegate_task`, or MCP tools)
+  * resource limits (timeout, stdout cap, tool-call cap)
+
+
+Switching mode changes where scripts run and which interpreter runs them, not what credentials they can see or which tools they can call.
+## Resource Limits[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#resource-limits "Resource Limits的直接链接")  
+| Resource  | Limit  | Notes  |  
+| --- | --- | --- |  
+| **Timeout**  | 5 minutes (300s)  | Script is killed with SIGTERM, then SIGKILL after 5s grace  |  
+| **Stdout**  | 50 KB  | Output truncated with `[output truncated at 50KB]` notice  |  
+| **Stderr**  | 10 KB  | Included in output on non-zero exit for debugging  |  
+| **Tool calls**  | 50 per execution  | Error returned when limit reached  |  
+All limits are configurable via `config.yaml`:
+
+```
+# In ~/.hermes/config.yamlcode_execution:mode: project      # project (default) | stricttimeout:300# Max seconds per script (default: 300)max_tool_calls:50# Max tool calls per execution (default: 50)
+```
+
+## How Tool Calls Work Inside Scripts[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#how-tool-calls-work-inside-scripts "How Tool Calls Work Inside Scripts的直接链接")
+When your script calls a function like `web_search("query")`:
+  1. The call is serialized to JSON and sent over a Unix domain socket to the parent process
+  2. The parent dispatches through the standard `handle_function_call` handler
+  3. The result is sent back over the socket
+  4. The function returns the parsed result
+
+
+This means tool calls inside scripts behave identically to normal tool calls — same rate limits, same error handling, same capabilities. The only restriction is that `terminal()` is foreground-only (no `background` or `pty` parameters).
+## Error Handling[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#error-handling "Error Handling的直接链接")
+When a script fails, the agent receives structured error information:
+  * **Non-zero exit code** : stderr is included in the output so the agent sees the full traceback
+  * **Timeout** : Script is killed and the agent sees `"Script timed out after 300s and was killed."`
+  * **Interruption** : If the user sends a new message during execution, the script is terminated and the agent sees `[execution interrupted — user sent a new message]`
+  * **Tool call limit** : When the 50-call limit is hit, subsequent tool calls return an error message
+
+
+The response always includes `status` (success/error/timeout/interrupted), `output`, `tool_calls_made`, and `duration_seconds`.
+## Security[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#security "Security的直接链接")
+The child process runs with a **minimal environment**. API keys, tokens, and credentials are stripped by default. The script accesses tools exclusively via the RPC channel — it cannot read secrets from environment variables unless explicitly allowed.
+Environment variables containing `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `CREDENTIAL`, `PASSWD`, or `AUTH` in their names are excluded. Only safe system variables (`PATH`, `HOME`, `LANG`, `SHELL`, `PYTHONPATH`, `VIRTUAL_ENV`, etc.) are passed through.
+### Skill Environment Variable Passthrough[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#skill-environment-variable-passthrough "Skill Environment Variable Passthrough的直接链接")
+When a skill declares `required_environment_variables` in its frontmatter, those variables are **automatically passed through** to both `execute_code` and `terminal` child processes after the skill is loaded. This lets skills use their declared API keys without weakening the security posture for arbitrary code.
+For non-skill use cases, you can explicitly allowlist variables in `config.yaml`:
+
+```
+terminal:env_passthrough:- MY_CUSTOM_KEY- ANOTHER_TOKEN
+```
+
+See the [Security guide](https://hermes-agent.nousresearch.com/docs/zh-Hans/docs/user-guide/security#environment-variable-passthrough) for full details.
+Hermes always writes the script and the auto-generated `hermes_tools.py` RPC stub into a temp staging directory that is cleaned up after execution. In `strict` mode the script also _runs_ there; in `project` mode it runs in the session's working directory (the staging directory stays on `PYTHONPATH` so imports still resolve). The child process runs in its own process group so it can be cleanly killed on timeout or interruption.
+## execute_code vs terminal[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#execute_code-vs-terminal "execute_code vs terminal的直接链接")  
+| Use Case  | execute_code  | terminal  |  
+| --- | --- | --- |  
+| Multi-step workflows with tool calls between  | ✅  | ❌  |  
+| Simple shell command  | ❌  | ✅  |  
+| Filtering/processing large tool outputs  | ✅  | ❌  |  
+| Running a build or test suite  | ❌  | ✅  |  
+| Looping over search results  | ✅  | ❌  |  
+| Interactive/background processes  | ❌  | ✅  |  
+| Needs API keys in environment  | ⚠️ Only via [passthrough](https://hermes-agent.nousresearch.com/docs/zh-Hans/docs/user-guide/security#environment-variable-passthrough)  | ✅ (most pass through)  |  
+**Rule of thumb:** Use `execute_code` when you need to call Hermes tools programmatically with logic between calls. Use `terminal` for running shell commands, builds, and processes.
+## Platform Support[​](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#platform-support "Platform Support的直接链接")
+Code execution requires Unix domain sockets and is available on **Linux and macOS only**. It is automatically disabled on Windows — the agent falls back to regular sequential tool calls.
+  * [How It Works](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#how-it-works)
+  * [When the Agent Uses This](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#when-the-agent-uses-this)
+  * [Practical Examples](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#practical-examples)
+    * [Data Processing Pipeline](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#data-processing-pipeline)
+    * [Multi-Step Web Research](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#multi-step-web-research)
+    * [Bulk File Refactoring](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#bulk-file-refactoring)
+    * [Build and Test Pipeline](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#build-and-test-pipeline)
+  * [Execution Mode](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#execution-mode)
+  * [Resource Limits](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#resource-limits)
+  * [How Tool Calls Work Inside Scripts](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#how-tool-calls-work-inside-scripts)
+  * [Error Handling](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#error-handling)
+  * [Security](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#security)
+    * [Skill Environment Variable Passthrough](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#skill-environment-variable-passthrough)
+  * [execute_code vs terminal](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#execute_code-vs-terminal)
+  * [Platform Support](https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/code-execution#platform-support)
+
+
