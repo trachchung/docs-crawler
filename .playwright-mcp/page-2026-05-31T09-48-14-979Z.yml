@@ -1,0 +1,7 @@
+- generic [ref=e1]:
+  - img "Logo" [ref=e4]
+  - generic [ref=e5]:
+    - generic [ref=e6]: POKER
+    - generic [ref=e7]: COTAM
+  - generic [ref=e10]: Lịch Tập Huấn
+  - paragraph [ref=e14]: Đang tải dữ liệu thời gian thực...

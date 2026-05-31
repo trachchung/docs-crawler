@@ -1,0 +1,100 @@
+{
+  "bannerSharing": {
+    "list_banner_shared_price": 6000,
+    "list_banner_exclusive_price": 10000,
+    "tournament_detail_exclusive_price": 8000,
+    "tournament_detail_shared_price": 4500
+  },
+  "shortcuts": [
+    {
+      "icon": "📋",
+      "url": "https://pokercotam.com/odds",
+      "color": "#ffffff",
+      "id": "d3006lgmn",
+      "title": "Công cụ tính odds"
+    },
+    {
+      "title": "Công cụ tính thuế",
+      "id": "ijq9pgf66",
+      "color": "#ffffff",
+      "url": "https://pokercotam.com/tax/",
+      "icon": "💰"
+    },
+    {
+      "icon": "📊",
+      "url": "https://pokercotam.com/icm/",
+      "title": "Công cụ deal ICM",
+      "color": "#ffffff",
+      "id": "kz8n2i4bv"
+    },
+    {
+      "color": "#ffffff",
+      "id": "2cur8dri2",
+      "title": "Công cụ mô phỏng ván bài",
+      "icon": "⭐",
+      "url": "https://pokercotam.com/hands/"
+    },
+    {
+      "title": "Công cụ check var prizepool",
+      "color": "#ffffff",
+      "id": "kt4mimg5u",
+      "icon": "⭐",
+      "url": "https://pokercotam.com/checkvar"
+    }
+  ],
+  "nowLineColor": "#f59e0b",
+  "topics": [],
+  "postPrices": {
+    "p1": 3000
+  },
+  "buyinFilters": [
+    {
+      "max": 2000000,
+      "label": "Thấp",
+      "id": "nkbe38b0r",
+      "min": 300000,
+      "shortLabel": "Thấp"
+    },
+    {
+      "label": "Trung",
+      "max": 5000000,
+      "id": "ubwzf0exq",
+      "min": 2100000,
+      "shortLabel": "Trung"
+    },
+    {
+      "min": 6000000,
+      "shortLabel": "Cao",
+      "max": 20000000,
+      "label": "Cao",
+      "id": "47f73zp7g"
+    },
+    {
+      "min": 22000000,
+      "shortLabel": "Highroller",
+      "label": "Highroller",
+      "max": 100000000,
+      "id": "7ioqnkvq6"
+    }
+  ],
+  "upcomingBgColor": "rgba(168,85,247,0.1)",
+  "footerText": "Lịch thi đấu Poker Việt Nam mỗi ngày – Nhanh chóng, Chính xác, Toàn diện. Hệ thống lọc thông minh giúp bạn dễ dàng tìm kiếm, so sánh và lựa chọn giải đấu hoàn hảo nhất với bankroll và mục tiêu của bản thân.",
+  "updatedAt": "2026-05-15T05:09:11.464Z",
+  "bannerPrices": {
+    "b5": 3000,
+    "b1": 6000,
+    "list_banner_exclusive": 10000,
+    "b6": 3000,
+    "b7": 3000,
+    "tournament_detail_shared": 5000,
+    "b2": 5000,
+    "list_banner_shared": 6000,
+    "footer_banner": 3000,
+    "top_banner": 6000,
+    "sidebar_banner": 5000,
+    "tournament_detail_exclusive": 9000
+  },
+  "id": "siteSettings",
+  "_createTime": "2026-05-13T18:29:00.619760Z",
+  "_updateTime": "2026-05-15T05:09:11.487768Z"
+}
